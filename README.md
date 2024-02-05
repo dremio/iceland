@@ -1,8 +1,8 @@
-# Iceland, Apache Iceberg playground
+# Iceland, data playground
 
-Iceland is a playground project for Apache Iceberg.
+Iceland is a data playground project, involving Apache Iceberg and other OSS projects in the domain.
 
-It contains several components used to easily run, test, benchmark Apache Iceberg, with different flavors (different catalogs, different engines, ...).
+It contains several components used to easily run, test, benchmark with different flavors (different catalogs, different engines, ...).
 
 The objectives are:
 
@@ -11,9 +11,9 @@ The objectives are:
 3. Compare the performance on the use cases with the different flavors
 
 The components are:
-* `datasets` contains concrete data used in the samples and tests
-* `usecases` contains samples and examples using the datasets
-* `benchmark` contains use cases benchmark
+* `iceberg/datasets` contains scripts to retrieve ready to use data.
+* `iceberg/usecases` contains samples and examples using the datasets.
+* `iceberg/benchmark` contains use cases benchmark
 * `icekube` contains Docker images, HELM charts, ... Basically everything needed to start with Apache Iceberg
 
 ## Datasets
@@ -30,25 +30,60 @@ Daily, a zip file is created, containing a CSV file with all events using the fo
 
 The format is described here: http://data.gdeltproject.org/documentation/GDELT-Data_Format_Codebook.pdf
 
-### TPCDS
+The `iceberg/datasets/gdelt/fetch.sh` script download the GDELT file (eventually using a given date):
+
+```
+./iceberg/datasets/gdelt/fetch.sh 20240114
+```
+
+The script downloads and extracts the GDELT ready to be used.
 
 ## Use cases
 
 ### Data Ingestion to Iceberg using Spark
 
-* `gdelt/spark/di`
+`iceberg/usecases/injection` contains `CreateTable` class. This class creates an Iceberg table to store the GDELT events.
 
-### Q1: Events By Location
+You first have to execute `CreateTable` to create the table used by other use cases.
 
-* `gdelt/spark/q1`
+You can build a uber jar using:
 
-This query extracts all events for a specific location, using Spark engine.
+```
+mvn clean install
+```
 
-## Performance Benchmark
+You now have the `iceberg/usecases/injection/target/injection-1.0-SNAPSHOT.jar` uber jar.
 
-## Icekube
+You can run `CreateTable` using:
 
-* `icekube`
+```
+java -cp iceberg/usecases/injection/target/injection-1.0-SNAPSHOT.jar com.dremio.iceland.iceberg.injection.CreateTable
+```
+
+You now have the `iceland.gdelt.events` Iceberg table created. You can use `DataInjection`, which parses the GDEL CSV file and insert events in the Iceberg table.
+
+You can run `DataInjection` using:
+
+```
+java -cp iceberg/usecases/injection/target/injection-1.0-SNAPSHOT.jar com.dremio.iceland.iceberg.injection.DataInjection
+```
+
+## First simple analytic queries
+
+The `injection` module also provide the first simple analytic queries. You can use `Analytics` that performs the following queries:
+
+* count the number of events in the table (`SELECT COUNT(*) FROM iceland.gdelt.events`)
+* the 10 first events by number of articles (`SELECT * FROM iceland.gdelt.events ORDER by NumArticles DESC LIMIT 10`)
+* the 10 first events by number of mentions (`SELECT * FROM iceland.gdelt.events ORDER by NumMentions DESC LIMIT 10`)
+* the 10 first events by average tone (`SELECT * FROM iceland.gdelt.events ORDER by AvgTone DESC LIMIT 10`)
+* the number of events located in the US (`SELECT count(*) FROM iceland.gdelt.events WHERE Country = "US"`)
+
+You can run `Analytics` with:
+
+```
+java -cp iceberg/usecases/injection/target/injection-1.0-SNAPSHOT.jar com.dremio.iceland.iceberg.injection.Analytics
+```
+
 
 ### Flavored Docker Images
 
